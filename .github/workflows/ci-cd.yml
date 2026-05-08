@@ -1,0 +1,45 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Run Pytest
+        run: |
+          pip install -r app/requirements.txt pytest httpx
+          python -m pytest test_main.py -v
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+
+      - name: Deploy to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # ตั้งค่าตัวตนสำหรับ Git ใน GitHub Actions
+          git config --global user.email "netsai@example.com"
+          git config --global user.name "netsai"
+          
+          # ขยายขนาด Buffer เพื่อรองรับการ Push ไฟล์โมเดลขนาดใหญ่ (.onnx, .pt)
+          git config --global http.postBuffer 524288000
+          
+          # เพิ่ม Remote ของ Hugging Face และสั่ง Push
+          git remote add hf https://netsai:$HF_TOKEN@huggingface.co/spaces/netsai/model_optimization || true
+          git push --force hf main
