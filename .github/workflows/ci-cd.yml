@@ -9,12 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
       - name: Run Pytest
         run: |
           pip install -r app/requirements.txt pytest httpx
@@ -25,66 +23,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          lfs: true
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
-      - name: Run Pytest
-        run: |
-          pip install -r app/requirements.txt pytest httpx
-          python -m pytest test_main.py -v
-
-  deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Push to Hugging Face
+      - name: Install HF Hub
+        run: pip install huggingface_hub
+      - name: Deploy to Spaces
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # 1. ตั้งค่า Identity เพื่อป้องกัน Error 128
-          git config --global user.email "netsai@example.com"
-          git config --global user.name "netsai"
-          
-          # 2. แก้ปัญหาไฟล์ใหญ่และ Remote Conflict โดยการล้าง Remote เก่า (ถ้ามี)
-          git remote rm hf || true
-          
-          # 3. เพิ่ม Remote ใหม่ด้วย Token ที่ถูกต้อง
-          git remote add hf https://netsai:$HF_TOKEN@huggingface.co/spaces/netsai/model_optimization
-          
-          # 4. บังคับส่งงาน (Force Push) เพื่อให้หน้า Hugging Face ตรงกับ GitHub 100%
-          git push hf main --force
-      - name: Deploy to Hugging Face
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          # ตั้งค่าตัวตนสำหรับ Git ใน GitHub Actions
-          git config --global user.email "netsai@example.com"
-          git config --global user.name "netsai"
-          
-          # ขยายขนาด Buffer เพื่อรองรับการ Push ไฟล์โมเดลขนาดใหญ่ (.onnx, .pt)
-          git config --global http.postBuffer 524288000
-          
-          # เพิ่ม Remote ของ Hugging Face และสั่ง Push
-          git remote add hf https://netsai:$HF_TOKEN@huggingface.co/spaces/netsai/model_optimization || true
-          git push --force hf main
+          # ใช้ Python Script สั้นๆ ในการอัปโหลด (วิธีนี้ชัวร์กว่า Git push และรองรับไฟล์ใหญ่)
+          python -c "
+          from huggingface_hub import HfApi
+          api = HfApi()
+          api.upload_folder(
+              folder_path='.',
+              repo_id='netsai/model_optimization',
+              repo_type='space',
+              token='${{ env.HF_TOKEN }}'
+          )
+          "
