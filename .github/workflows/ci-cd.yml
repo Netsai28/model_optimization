@@ -7,12 +7,15 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Run Pytest
         run: |
           pip install -r app/requirements.txt pytest httpx
@@ -21,36 +24,53 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Install Hugging Face Hub
         run: pip install huggingface_hub
-      - name: Deploy to Spaces
+
+      - name: Deploy to Hugging Face Spaces
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
         run: |
-          # ใช้ Python Script โดยตรงเพื่ออัปโหลดไฟล์ แก้ปัญหา Command Not Found และ Unicode Error
-          python -c "
+          python <<EOF
           import os
           from huggingface_hub import HfApi
+
           api = HfApi()
+
           try:
               api.upload_folder(
-                  folder_path='.',
-                  repo_id='netsai/model_optimization',
-                  repo_type='space',
-                  token='${{ env.HF_TOKEN }}',
-                  path_in_repo='.',
-                  ignore_patterns=['.git*']
+                  folder_path=".",
+                  repo_id="netsai/model_optimization",
+                  repo_type="space",
+                  token=os.environ["HF_TOKEN"],
+
+                  # กันไฟล์ที่ไม่จำเป็น
+                  ignore_patterns=[
+                      ".git/*",
+                      "__pycache__/*",
+                      "*.pyc",
+                      ".venv/*",
+                      "venv/*",
+                      "*.pkl",
+                      "*.pt",
+                      "*.bin"
+                  ]
               )
-              print('Successfully deployed to Hugging Face Spaces!')
+
+              print("Successfully deployed!")
+
           except Exception as e:
-              print(f'Deployment failed: {e}')
-              exit(1)
-          "
+              print("Deployment failed:")
+              print(e)
+              raise
+          EOF
