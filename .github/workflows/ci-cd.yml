@@ -9,10 +9,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
+
       - name: Run Pytest
         run: |
           pip install -r app/requirements.txt pytest httpx
@@ -23,24 +25,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-      - name: Install HF Hub
+
+      - name: Install Hugging Face Hub
         run: pip install huggingface_hub
+
       - name: Deploy to Spaces
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # ใช้ Python Script สั้นๆ ในการอัปโหลด (วิธีนี้ชัวร์กว่า Git push และรองรับไฟล์ใหญ่)
-          python -c "
-          from huggingface_hub import HfApi
-          api = HfApi()
-          api.upload_folder(
-              folder_path='.',
-              repo_id='netsai/model_optimization',
-              repo_type='space',
-              token='${{ env.HF_TOKEN }}'
-          )
-          "
+          # ใช้ CLI โดยตรงเพื่อข้ามปัญหา Unicode และจัดการไฟล์ใหญ่ได้ดีกว่า
+          huggingface-cli login --token $HF_TOKEN
+          # คำสั่งนี้จะอัปโหลดทุกอย่างในโฟลเดอร์ ยกเว้น .git ไปยัง Space
+          # และจะจัดการเรื่องไฟล์ใหญ่ (LFS) ให้โดยอัตโนมัติ
+          huggingface-cli upload netsai/model_optimization . . --repo-type=space --exclude=".git*"
