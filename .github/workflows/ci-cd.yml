@@ -35,7 +35,22 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # ใช้ python -m เพื่อเรียกใช้ cli โดยตรง แก้ปัญหา command not found
-          python -m huggingface_hub.commands.user login --token $HF_TOKEN
-          # สั่งอัปโหลดโดยระบุโฟลเดอร์ปัจจุบัน (.) ไปยังปลายทาง (.)
-          python -m huggingface_hub.commands.huggingface_cli upload netsai/model_optimization . . --repo-type=space --exclude=".git*"
+          # ใช้ Python Script โดยตรงเพื่ออัปโหลดไฟล์ แก้ปัญหา Command Not Found และ Unicode Error
+          python -c "
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi()
+          try:
+              api.upload_folder(
+                  folder_path='.',
+                  repo_id='netsai/model_optimization',
+                  repo_type='space',
+                  token='${{ env.HF_TOKEN }}',
+                  path_in_repo='.',
+                  ignore_patterns=['.git*']
+              )
+              print('Successfully deployed to Hugging Face Spaces!')
+          except Exception as e:
+              print(f'Deployment failed: {e}')
+              exit(1)
+          "
