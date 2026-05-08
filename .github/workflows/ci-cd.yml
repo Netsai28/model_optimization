@@ -9,12 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
       - name: Run Pytest
         run: |
           pip install -r app/requirements.txt pytest httpx
@@ -27,21 +25,17 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
-
       - name: Install Hugging Face Hub
         run: pip install huggingface_hub
-
       - name: Deploy to Spaces
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # ใช้ CLI โดยตรงเพื่อข้ามปัญหา Unicode และจัดการไฟล์ใหญ่ได้ดีกว่า
-          huggingface-cli login --token $HF_TOKEN
-          # คำสั่งนี้จะอัปโหลดทุกอย่างในโฟลเดอร์ ยกเว้น .git ไปยัง Space
-          # และจะจัดการเรื่องไฟล์ใหญ่ (LFS) ให้โดยอัตโนมัติ
-          huggingface-cli upload netsai/model_optimization . . --repo-type=space --exclude=".git*"
+          # ใช้ python -m เพื่อเรียกใช้ cli โดยตรง แก้ปัญหา command not found
+          python -m huggingface_hub.commands.user login --token $HF_TOKEN
+          # สั่งอัปโหลดโดยระบุโฟลเดอร์ปัจจุบัน (.) ไปยังปลายทาง (.)
+          python -m huggingface_hub.commands.huggingface_cli upload netsai/model_optimization . . --repo-type=space --exclude=".git*"
